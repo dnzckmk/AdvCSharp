@@ -11,7 +11,7 @@ namespace AdvCSharp
         /// <summary>
         /// Delegate for filtering.
         /// </summary>
-        private readonly Func<string, bool> filter;
+        private readonly Func<string, bool>? filter;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FileSystemVisitor"/> class.
@@ -34,12 +34,46 @@ namespace AdvCSharp
         }
 
         /// <summary>
-        /// Traverse through folders and files of root folder.
+        /// Start event.
+        /// </summary>
+        public event EventHandler? Start;
+
+        /// <summary>
+        /// Finish event.
+        /// </summary>
+        public event EventHandler? Finish;
+
+        /// <summary>
+        /// Traverse through folders and files of the root folder.
+        /// Triggers Start and Finish events.
         /// </summary>
         /// <returns>IEnumerable string of folders and files in linear sequence.</returns>
         public IEnumerable<string> Traverse()
         {
-            return this.Traverse(this.rootFolder);
+            this.OnStart();
+
+            foreach (var item in this.Traverse(this.rootFolder))
+            {
+                yield return item;
+            }
+
+            this.OnFinish();
+        }
+
+        /// <summary>
+        /// Trigger Start event.
+        /// </summary>
+        protected virtual void OnStart()
+        {
+            this.Start?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Trigger Finish event.
+        /// </summary>
+        protected virtual void OnFinish()
+        {
+            this.Finish?.Invoke(this, EventArgs.Empty);
         }
 
         private IEnumerable<string> Traverse(string path)

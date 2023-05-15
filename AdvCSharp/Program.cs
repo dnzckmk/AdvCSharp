@@ -26,20 +26,23 @@ internal class Program
             }
 
             // Work
-            FileSystemVisitor fileSystemVisitor = new FileSystemVisitor(text, f => f.EndsWith(".docx"));
-            var items = fileSystemVisitor.Traverse();
+            var filterExpression = (string f) => f.EndsWith(".docx");
+            FileSystemVisitor fileSystemVisitor = new FileSystemVisitor(text, filterExpression);
 
-            if (!items.Any())
-            {
-                Console.WriteLine("No file or folder found.");
-                continue;
-            }
+            // Assign Notify method to the Start and Finish events
+            fileSystemVisitor.Start += (sender, e) => Notify(sender, e, "Process Started.");
+            fileSystemVisitor.Finish += (sender, e) => Notify(sender, e, "Process Finished.");
 
-            foreach (var item in items)
+            foreach (var item in fileSystemVisitor.Traverse())
             {
                 Console.WriteLine(item);
             }
         }
         while (text != "exit");
+    }
+
+    private static void Notify(object? sender, EventArgs e, string message)
+    {
+        Console.WriteLine($"{sender}, {message}");
     }
 }
