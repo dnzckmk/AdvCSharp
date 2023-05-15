@@ -69,10 +69,10 @@ namespace AdvCSharp
         }
 
         /// <summary>
-        /// Check if there is any filter provided and if data exists after filtering.
+        /// Check if there is any filter function provided or if data exists after filtering.
         /// </summary>
         /// <param name="item">Item to be filtered.</param>
-        /// <returns>Return true if no filter provided or filter applied and data found.</returns>
+        /// <returns>Return true if no filter provided or filter applied and data exists.</returns>
         private bool CheckFilter(string item)
         {
             return this.filter == null || this.filter(item);
