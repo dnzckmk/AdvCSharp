@@ -1,4 +1,8 @@
-﻿using AdvCSharp;
+﻿// <copyright file="Program.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+using AdvCSharp;
 
 internal class Program
 {
@@ -17,19 +21,25 @@ internal class Program
             }
             else if (string.IsNullOrEmpty(text) || !text.StartsWith("C:"))
             {
-                Console.WriteLine("Please enter valid root path.");
+                Console.WriteLine("Please enter valid root path (Should start with 'C:' ).");
                 continue;
             }
 
             // Work
-            FileSystemVisitor fileSystemVisitor = new FileSystemVisitor(text);
-            var content = fileSystemVisitor.Traverse();
+            FileSystemVisitor fileSystemVisitor = new FileSystemVisitor(text, f => f.EndsWith(".docx"));
+            var items = fileSystemVisitor.Traverse();
 
-            foreach (var c in content)
+            if (!items.Any())
             {
-                Console.WriteLine(c);
+                Console.WriteLine("No file or folder found.");
+                continue;
+            }
+
+            foreach (var item in items)
+            {
+                Console.WriteLine(item);
             }
         }
-        while (string.IsNullOrWhiteSpace(text) || !text.StartsWith("C:"));
+        while (text != "exit");
     }
 }
