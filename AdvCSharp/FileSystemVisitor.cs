@@ -4,14 +4,22 @@
 
 namespace AdvCSharp
 {
-    internal class FileSystemVisitor
+    public class FileSystemVisitor
     {
+        /// <summary>
+        /// Root folder path.
+        /// </summary>
         private readonly string rootFolder;
 
         /// <summary>
         /// Delegate for filtering.
         /// </summary>
-        private readonly Func<string, bool> filter;
+        private readonly Func<string, bool>? filter;
+
+        /// <summary>
+        /// If search aborted by the user it will be true.
+        /// </summary>
+        private bool isSearchAborted;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FileSystemVisitor"/> class.
@@ -34,48 +42,185 @@ namespace AdvCSharp
         }
 
         /// <summary>
-        /// Traverse through folders and files of root folder.
+        /// Start event.
+        /// </summary>
+        public event EventHandler? Start;
+
+        /// <summary>
+        /// Finish event.
+        /// </summary>
+        public event EventHandler? Finish;
+
+        /// <summary>
+        /// File found event.
+        /// </summary>
+        public event EventHandler<FileSystemVisitorEventArgs>? FileFound;
+
+        /// <summary>
+        /// Directory found event.
+        /// </summary>
+        public event EventHandler<FileSystemVisitorEventArgs>? DirectoryFound;
+
+        /// <summary>
+        /// Filtered file found event.
+        /// </summary>
+        public event EventHandler<FileSystemVisitorEventArgs>? FilteredFileFound;
+
+        /// <summary>
+        /// Filtered directory found event.
+        /// </summary>
+        public event EventHandler<FileSystemVisitorEventArgs>? FilteredDirectoryFound;
+
+        /// <summary>
+        /// Traverse through folders and files of the root folder.
+        /// Triggers Start and Finish events.
         /// </summary>
         /// <returns>IEnumerable string of folders and files in linear sequence.</returns>
         public IEnumerable<string> Traverse()
         {
-            return this.Traverse(this.rootFolder);
-        }
+            this.OnStart();
 
-        private IEnumerable<string> Traverse(string path)
-        {
-            // Iterates each folder in the current folder path, recursive call foreach subfolder
-            foreach (var subFolder in Directory.GetDirectories(path))
+            foreach (var item in this.Traverse(this.rootFolder))
             {
-                if (this.CheckFilter(subFolder))
-                {
-                    yield return subFolder;
-                }
-
-                foreach (var item in this.Traverse(subFolder))
-                {
-                    yield return item;
-                }
+                yield return item;
             }
 
-            // Iterate and return each file in the current folder path
-            foreach (var file in Directory.GetFiles(path))
-            {
-                if (this.CheckFilter(file))
-                {
-                    yield return file;
-                }
-            }
+            this.OnFinish();
         }
 
         /// <summary>
-        /// Check if there is any filter function provided or if data exists after filtering.
+        /// Trigger Start event.
         /// </summary>
-        /// <param name="item">Item to be filtered.</param>
-        /// <returns>Return true if no filter provided or filter applied and data exists.</returns>
-        private bool CheckFilter(string item)
+        protected virtual void OnStart()
         {
-            return this.filter == null || this.filter(item);
+            this.Start?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Trigger Finish event.
+        /// </summary>
+        protected virtual void OnFinish()
+        {
+            this.Finish?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Trigger file found event.
+        /// </summary>
+        /// <param name="args">Event args.</param>
+        protected virtual void OnFileFound(FileSystemVisitorEventArgs args)
+        {
+            this.FileFound?.Invoke(this, args);
+        }
+
+        /// <summary>
+        /// Trigger directory found event.
+        /// </summary>
+        /// <param name="args">Event args.</param>
+        protected virtual void OnDirectoryFound(FileSystemVisitorEventArgs args)
+        {
+            this.DirectoryFound?.Invoke(this, args);
+        }
+
+        /// <summary>
+        /// Trigger filtered file found event.
+        /// </summary>
+        /// <param name="args">Event args.</param>
+        protected virtual void OnFilteredFileFound(FileSystemVisitorEventArgs args)
+        {
+            this.FilteredFileFound?.Invoke(this, args);
+        }
+
+        /// <summary>
+        /// Trigger filtered directory found event.
+        /// </summary>
+        /// <param name="args">Event args.</param>
+        protected virtual void OnFilteredDirectoryFound(FileSystemVisitorEventArgs args)
+        {
+            this.FilteredDirectoryFound?.Invoke(this, args);
+        }
+
+        /// <summary>
+        /// Traverse through files and folders in the given path. If any filter provided it applies.
+        /// </summary>
+        /// <param name="path">Path of the file or folder.</param>
+        /// <returns>IEnumerable file and folder paths.</returns>
+        private IEnumerable<string> Traverse(string path)
+        {
+            // Iterate and return each file in the current folder path
+            FileSystemVisitorEventArgs args;
+            foreach (var file in Directory.GetFiles(path))
+            {
+                if (this.isSearchAborted)
+                {
+                    yield break;
+                }
+
+                Thread.Sleep(1000);
+                args = new FileSystemVisitorEventArgs(file);
+
+                // Trigger FileFound delegate
+                this.OnFileFound(args);
+
+                if (args.Abort)
+                {
+                    this.isSearchAborted = true;
+                    Console.WriteLine("1");
+                    yield break;
+                }
+
+                if (!args.Exclude)
+                {
+                    if (this.filter != null && this.filter(file))
+                    {
+                        this.OnFilteredFileFound(args);
+                        yield return file;
+                    }
+                    else if (this.filter == null)
+                    {
+                        yield return file;
+                    }
+                }
+            }
+
+            // Iterates each folder in the current folder path, recursive call foreach subfolder
+            foreach (var subFolder in Directory.GetDirectories(path))
+            {
+                if (this.isSearchAborted)
+                {
+                    yield break;
+                }
+
+                Thread.Sleep(1000);
+                args = new FileSystemVisitorEventArgs(subFolder);
+
+                // Trigger DirecoryFound delegate
+                this.OnDirectoryFound(args);
+                if (args.Abort)
+                {
+                    this.isSearchAborted = true;
+                    Console.WriteLine("2");
+                    yield break;
+                }
+
+                if (!args.Exclude)
+                {
+                    if (this.filter != null && this.filter(subFolder))
+                    {
+                        this.OnFilteredDirectoryFound(args);
+                        yield return subFolder;
+                    }
+                    else if (this.filter == null)
+                    {
+                        yield return subFolder;
+                    }
+
+                    foreach (var item in this.Traverse(subFolder))
+                    {
+                        yield return item;
+                    }
+                }
+            }
         }
     }
 }
